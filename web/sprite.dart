@@ -8,7 +8,11 @@ class ImageSprite extends Sprite {
   
   ImageElement  image;
   
-  ImageSprite( { ImageElement img, String imgKey:null, num width:10, num height:10 } ) : super.empty() {
+  /** 
+   * img:表示する画像をImageElement形式で
+   * imgkey:表示する画像をimageMapのkeyで
+   */
+  ImageSprite( { ImageElement img, String imgKey:null, num width:null, num height:null } ) : super.empty() {
     if( imgKey!=null )
       image = geng.imageMap[imgKey];
     if( img!=null )
@@ -18,8 +22,8 @@ class ImageSprite extends Sprite {
       c.c.drawImageScaled(image, -offsetx, -offsety, _w, _h);
     };
     
-    _w = width;
-    _h = height;
+    _w = (width!=null) ? width : image.width;
+    _h = (height!=null) ? height : image.height;
     offsetx = _w / 2;
     offsety = _h / 2;
   }
@@ -43,11 +47,16 @@ class Sprite {
       offsety = 0;
   num rotate = null;
   
+  set offset( Point p ) {
+    offsetx = p.x;
+    offsety = p.y;
+  }
+  
   bool  isShow = true;
   
   SpriteRender  sprenderer;
   
-  factory Sprite.withImage( String imgKey , { num width:10, num height:10 } ) {
+  factory Sprite.withImage( String imgKey , { num width:null, num height:null } ) {
     return new ImageSprite( imgKey:imgKey, width:width, height:height );
   }
   
