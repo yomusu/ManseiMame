@@ -155,3 +155,63 @@ class Sprite {
     isShow = false;
   }
 }
+
+
+class AnimationRender {
+  
+  /** ここに登録してあるスプライトを順番に表示する:nullだと表示しない */
+  List<Sprite>  spriteList;
+  int count = 0;
+  int milliseconds = 0;
+  var animeEndCallback;
+  
+  var _timer;
+  
+  /** 有限ループのアニメ。アニメ終了時にcallbackできる */
+  AnimationRender.loop( int times, var callback ) {
+    animeEndCallback = () {
+      times--;
+      if( times==0 ) {
+        stop();
+        callback();
+      } else {
+        count=0;
+      }
+    };
+  }
+  /** 無限ループアニメ */
+  AnimationRender.mugen() {
+    animeEndCallback = () => count=0;
+  }
+  /** 1ショットだけのアニメ */
+  AnimationRender.oneShot() {
+    animeEndCallback = () => stop();
+  }
+  
+  /** レンダリング */
+  void render( GCanvas2D canvas, Sprite sp ) {
+    var s = spriteList[count];
+    if( s!=null )
+      s.render(canvas);
+  }
+  
+  void start() {
+    _timer = new Timer.periodic( new Duration(milliseconds:milliseconds), (t) {
+      count++;
+      if( count >= spriteList.length )
+        animeEndCallback();
+    });
+  }
+  
+  void stop() {
+    _timer.cancel();
+  }
+  
+  /** スプライトリストにスプライトを追加 */
+  void add( Sprite sp ) {
+    if( spriteList==null )
+      spriteList = new List();
+    spriteList.add( sp );
+  }
+}
+

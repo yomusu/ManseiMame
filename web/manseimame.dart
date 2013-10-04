@@ -183,29 +183,29 @@ class GameScreen extends GScreen {
  */
 class Boochan extends GObj {
   
-  Sprite sp01,sp02,spThrow;
+  Sprite sp;
+  Sprite spThrow;
   int width=83;
   
   Vector  pos = new Vector();
   var _anime;
   
   void onInit() {
-    sp01 = new Sprite.withImage("bu01")
+    var sp01 = new Sprite.withImage("bu01")
     ..offset = new Point(83~/2,105~/2);
-    sp02 = new Sprite.withImage("bu02")
+    var sp02 = new Sprite.withImage("bu02")
     ..offset = new Point(83~/2,105~/2);
     spThrow = new Sprite.withImage("bu03");
     
     pos.x = -width.toDouble();
     pos.y = 320.0;
     
-    _anime = new Animation.mugen()
+    _anime = new AnimationRender.mugen()
     ..milliseconds = 500
-    ..renderList = [
-        sp01.render,
-        sp02.render,
-    ]
+    ..spriteList = [sp01,sp02]
     ..start();
+    
+    sp = new Sprite.withRender( _anime.render, width:83, height:105 );
   }
   
   void onProcess( RenderList renderList ) {
@@ -218,12 +218,10 @@ class Boochan extends GObj {
       // ゲーム直後メッセージ表示に遷移
     }
     // スプライトに座標転写…これは無駄だ。Spriteにアニメ機能をもたせよう！
-    sp01.x = pos.x;
-    sp01.y = pos.y;
-    sp02.x = pos.x;
-    sp02.y = pos.y;
+    sp.x = pos.x;
+    sp.y = pos.y;
     
-    renderList.add( 100, _anime.render );
+    renderList.add( 100, sp.render );
   }
   
   void onDispose() {
@@ -314,7 +312,7 @@ class Oni extends GObj {
     var sp = sp1;
     sp.x = this.x;
     sp.y = this.y;
-    renderList.add(1000, sp.render);
+    renderList.add(10, sp.render);
   }
   void onDispose() {
   }
@@ -325,28 +323,31 @@ class Oni extends GObj {
  */
 class StartCounter extends GObj {
   
+  Sprite sp;
   var _loop;
   var callback;
   
   void onInit() {
     
-    var img = geng.imageMap["start"];
-    num x = (480 - img.width) ~/ 2;
-    num y = 200 - (img.height ~/ 2);
+    Sprite  img = new Sprite.withImage("start");
+    img.offsetx = img.width ~/ 2;
+    img.offsety = img.height ~/ 2;
     
-    _loop = new Animation.loop( 3, (){
+    _loop = new AnimationRender.loop( 3, (){
       callback();
       // 自身の廃棄処理
       dispose();
     })
-    ..milliseconds = 500
-    ..renderList = [
-        (canvas) { canvas.c.drawImage(img, x, y); },
-        (canvas) { },
-    ];
+    ..milliseconds = 500;
+    _loop.add( img );
+    _loop.add( null );
+    
+    sp = new Sprite.withRender(_loop.render, width:img.width , height:img.height )
+    ..x = 480 ~/ 2
+    ..y = 400 ~/ 2;
   }
   void onProcess( RenderList renderList ) {
-    renderList.add(1000, _loop.render );
+    renderList.add(1000, sp.render );
   }
   void onDispose() {
     _loop.stop();
@@ -357,51 +358,3 @@ class StartCounter extends GObj {
   }
 }
 
-class Animation {
-  
-  List<Render>  renderList;
-  int count = 0;
-  int milliseconds = 0;
-  var animeEndCallback;
-  
-  var _timer;
-  
-  /** 有限ループのアニメ。アニメ終了時にcallbackできる */
-  Animation.loop( int times, var callback ) {
-    animeEndCallback = () {
-      times--;
-      if( times==0 ) {
-        stop();
-        callback();
-      } else {
-        count=0;
-      }
-    };
-  }
-  /** 無限ループアニメ */
-  Animation.mugen() {
-    animeEndCallback = () => count=0;
-  }
-  /** 1ショットだけのアニメ */
-  Animation.oneShot() {
-    animeEndCallback = () => stop();
-  }
-  
-  /** レンダリング */
-  void render( GCanvas2D canvas ) {
-    renderList[count](canvas);
-  }
-  
-  void start() {
-    _timer = new Timer.periodic( new Duration(milliseconds:milliseconds), (t) {
-      count++;
-      if( count >= renderList.length )
-        animeEndCallback();
-    });
-  }
-  
-  void stop() {
-    _timer.cancel();
-  }
-  
-}
