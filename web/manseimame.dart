@@ -127,7 +127,7 @@ class GameScreen extends GScreen {
     ..textBaseline = "top";
     
     // 鬼表示
-    var redOni = new Oni.blue();
+    var redOni = new Oni.red();
     geng.objlist.add( redOni );
 
     var blueOni = new Oni.blue();
@@ -145,6 +145,22 @@ class GameScreen extends GScreen {
     geng.objlist.add(start);
     start.start();
     
+    //-------
+    // まめと鬼の当たり判定
+    var onis = [ redOni, blueOni ];
+    var mameConf = (Mame mame) {
+      for( var oni in onis ) {
+        var rd = mame.getXDistanceOnY( oni.x, oni.y );
+        if( rd!=null && rd.abs() < 20 ) {
+          oni.ouch( rd );
+          mame.dispose();
+          // 得点
+          print("rd=$rd, oni.x=${oni.x}, oni.y=${oni.y}");
+        }
+      }
+    };
+    
+    //-----
     // マウスハンドラ用透明なボタン
     GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
     mouse.renderer = (c,b) {};
@@ -154,7 +170,14 @@ class GameScreen extends GScreen {
         // まめ投げる
         geng.soundManager.play("throw");
         mouse.isPress = false;
-        boo.throwAway();
+        
+        Mame  mame = new Mame()
+        ..onForwarded = mameConf
+        ..pos.set( boo.pos )
+        ..speed.y = -5.0;
+        
+        geng.objlist.add( mame );
+        
         // まめ減らす
         mameCnt--;
       }
@@ -227,13 +250,6 @@ class Boochan extends GObj {
   void onDispose() {
     _anime.stop();
   }
-  
-  void throwAway() {
-    Mame  mame = new Mame();
-    mame.pos.set( pos );
-    mame.speed.y = -5.0;
-    geng.objlist.add( mame );
-  }
 }
 
 /**
@@ -242,26 +258,49 @@ class Boochan extends GObj {
 class Mame extends GObj {
 
   Sprite  _sp;
+  final Vector  oldpos = new Vector();
   final Vector  pos = new Vector();
   final Vector  speed = new Vector();
   
+  var onForwarded;
+  
   void onInit() {
     _sp = new Sprite.withImage("mame")
-    ..offset = new Point(10,10);
+    ..offset = new Point(14,5);
   }
   
   void onProcess( RenderList renderList ) {
     // まめをすすめる
+    oldpos.set(pos);
     pos.add(speed);
     // 画面外判定
     if( pos.y < -_sp.height )
       dispose();
     // 鬼に当たり判定
+    if( onForwarded!=null )
+      onForwarded(this);
     
     _sp.x = pos.x;
     _sp.y = pos.y;
     
     renderList.add( 100, _sp.render );
+  }
+  
+  num getXDistanceOnY( targetx, targety ) {
+    var to = this.pos;
+    if( oldpos.y < targety )
+      return null;
+    if( to.y > targety )
+      return null;
+    
+    var dy1 = oldpos.y - targety;
+    var dy2 = oldpos.y - to.y;
+    
+    var dx2 = to.x - oldpos.x;
+    
+    var dx1 = (dy1 / dy2) * dx2;
+    
+    return (oldpos.x + dx1) - targetx;
   }
   
   void onDispose() {
@@ -274,47 +313,79 @@ class Mame extends GObj {
  */
 class Oni extends GObj {
   
-  static var  centerData = {
-    "oni_r01" : [124,146],
-    "oni_r02" : [125,144],
-    "oni_r03" : [125,150],
-    "oni_r04" : [120,155],
-    "oni_r05" : [132,159],
-    
-    "oni_b01" : [109,145],
-    "oni_b02" : [109,156],
-    "oni_b03" : [109,159],
-    "oni_b04" : [114,145],
-    "oni_b05" : [126,149],
-  };
-  
+  Sprite  sp;
   Sprite  sp1,sp2,sp3,sp4,sp5;
+  Sprite  hitSp;
   num x,y;
+  var anime;
+  final List<num>  hitPoints = new List();
   
-  Oni.blue() {
-    sp1 = new Sprite.withImage("oni_b01")
+  Oni.red() {
+    sp1 = new Sprite.withImage("oni_r01")
     ..offset = new Point( 124, 146 );
-    sp2 = new Sprite.withImage("oni_b02")
+    sp2 = new Sprite.withImage("oni_r02")
     ..offset = new Point( 125, 144 );
-    sp3 = new Sprite.withImage("oni_b03")
+    sp3 = new Sprite.withImage("oni_r03")
     ..offset = new Point( 125, 150 );
-    sp4 = new Sprite.withImage("oni_b04")
+    sp4 = new Sprite.withImage("oni_r04")
     ..offset = new Point( 120, 155 );
-    sp5 = new Sprite.withImage("oni_b04")
+    sp5 = new Sprite.withImage("oni_r04")
     ..offset = new Point( 132, 159 );
-  }
-  
-  void onInit() {
+    // 初期の位置
     y = 156;
     x = 140;
   }
+  
+  Oni.blue() {
+    sp1 = new Sprite.withImage("oni_b01")
+    ..offset = new Point( 109, 145 );
+    sp2 = new Sprite.withImage("oni_b02")
+    ..offset = new Point( 109, 156 );
+    sp3 = new Sprite.withImage("oni_b03")
+    ..offset = new Point( 109, 159 );
+    sp4 = new Sprite.withImage("oni_b04")
+    ..offset = new Point( 114, 145 );
+    sp5 = new Sprite.withImage("oni_b04")
+    ..offset = new Point( 126, 149 );
+    // 初期の位置
+    y = 156;
+    x = 340;
+  }
+  
+  void onInit() {
+    sp = new Sprite.withRender((c,sp) => sp1.render(c), width:150, height:150 );
+    hitSp = new Sprite.withImage("hit")
+    ..offsetx = 12;
+  }
+  
   void onProcess( RenderList renderList ) {
-    var sp = sp1;
     sp.x = this.x;
     sp.y = this.y;
-    renderList.add(10, sp.render);
+    renderList.add(10, (c){
+      sp.render(c);
+      // ヒットマークを描画
+      for( var p in hitPoints ) {
+        hitSp.x = p+x;
+        hitSp.y = y;
+        hitSp.render(c);
+      }
+    });
+  }
+  
+  /** あたり */
+  void ouch( num dx ) {
+    if( anime==null ) {
+      anime = new AnimationRender.mugen()
+      ..milliseconds = 400
+      ..spriteList = [ sp2, sp3 ]
+      ..start();
+      sp.sprenderer = anime.render;
+    }
+    hitPoints.add( dx );
   }
   void onDispose() {
+    if( anime!=null )
+      anime.stop();
   }
 }
 
