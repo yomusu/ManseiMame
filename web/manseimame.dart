@@ -106,8 +106,10 @@ class Title extends GScreen {
  */
 class GameScreen extends GScreen {
   
-  int score = 100;
-  int mameCnt = 3;
+  /** ゲームのスコア */
+  int score = 0;
+  /** まめの残り */
+  int remainsOfMame = 3;
   
   var imgBg;
   var imgMameIcon;
@@ -149,24 +151,31 @@ class GameScreen extends GScreen {
     // まめと鬼の当たり判定
     var onis = [ redOni, blueOni ];
     var mameConf = (Mame mame) {
-      for( var oni in onis ) {
-        var rd = mame.getXDistanceOnY( oni.x, oni.y );
-        if( rd!=null && rd.abs() < 20 ) {
-          oni.ouch( rd );
-          mame.dispose();
-          // 得点
-          print("rd=$rd, oni.x=${oni.x}, oni.y=${oni.y}");
+      for( Oni oni in onis ) {
+        var onx = mame.getXOnY( oni.y );
+        if( onx!=null ) {
+          var s = oni.getScoreWithX( onx );
+          if( s!=null ) {
+            print( "hit s=$s onx=$onx" );
+            oni.putHitMark( onx );
+            mame.dispose();
+            if( s==100 )
+              oni.ouch();
+            else
+              oni.kayui();
+            score += s;
+          }
         }
       }
     };
     
     //-----
-    // マウスハンドラ用透明なボタン
+    // マウスハンドラ用透明なボタン→まめを投げる
     GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
     mouse.renderer = (c,b) {};
     mouse.onPress = () {
       // クリックされた
-      if( mameCnt > 0 ) {
+      if( remainsOfMame > 0 ) {
         // まめ投げる
         geng.soundManager.play("throw");
         mouse.isPress = false;
@@ -179,7 +188,7 @@ class GameScreen extends GScreen {
         geng.objlist.add( mame );
         
         // まめ減らす
-        mameCnt--;
+        remainsOfMame--;
       }
     };
     btnList.add(mouse);
@@ -191,7 +200,7 @@ class GameScreen extends GScreen {
       
       // 豆表示
       var x = 340;
-      for( int i=0; i<mameCnt; i++ ) {
+      for( int i=0; i<remainsOfMame; i++ ) {
         canvas.c.drawImage(imgMameIcon, x, 400);
         x += 40;
       }
@@ -286,7 +295,7 @@ class Mame extends GObj {
     renderList.add( 100, _sp.render );
   }
   
-  num getXDistanceOnY( targetx, targety ) {
+  num getXOnY( targety ) {
     var to = this.pos;
     if( oldpos.y < targety )
       return null;
@@ -300,7 +309,7 @@ class Mame extends GObj {
     
     var dx1 = (dy1 / dy2) * dx2;
     
-    return (oldpos.x + dx1) - targetx;
+    return (oldpos.x + dx1);
   }
   
   void onDispose() {
@@ -329,7 +338,7 @@ class Oni extends GObj {
     ..offset = new Point( 125, 150 );
     sp4 = new Sprite.withImage("oni_r04")
     ..offset = new Point( 120, 155 );
-    sp5 = new Sprite.withImage("oni_r04")
+    sp5 = new Sprite.withImage("oni_r05")
     ..offset = new Point( 132, 159 );
     // 初期の位置
     y = 156;
@@ -345,7 +354,7 @@ class Oni extends GObj {
     ..offset = new Point( 109, 159 );
     sp4 = new Sprite.withImage("oni_b04")
     ..offset = new Point( 114, 145 );
-    sp5 = new Sprite.withImage("oni_b04")
+    sp5 = new Sprite.withImage("oni_b05")
     ..offset = new Point( 126, 149 );
     // 初期の位置
     y = 156;
@@ -355,7 +364,8 @@ class Oni extends GObj {
   void onInit() {
     sp = new Sprite.withRender((c,sp) => sp1.render(c), width:150, height:150 );
     hitSp = new Sprite.withImage("hit")
-    ..offsetx = 12;
+    ..offsetx = 13
+    ..offsety = 10;
   }
   
   void onProcess( RenderList renderList ) {
@@ -372,8 +382,28 @@ class Oni extends GObj {
     });
   }
   
+  int getScoreWithX( num px ) {
+    var rd = px - x;
+    var d = rd.abs();
+    if( d < 5 ) {
+      return 100;
+    } else if( d < 12 ) {
+      return 60;
+    } else if( d < 20 ) {
+      return 30;
+    } else if( d < 46 ) {
+      return 10;
+    }
+    return null;
+  }
+  
+  void putHitMark( num px ) {
+    var dx = px - x;
+    hitPoints.add( dx );
+  }
+  
   /** あたり */
-  void ouch( num dx ) {
+  void ouch() {
     if( anime==null ) {
       anime = new AnimationRender.mugen()
       ..milliseconds = 400
@@ -381,8 +411,18 @@ class Oni extends GObj {
       ..start();
       sp.sprenderer = anime.render;
     }
-    hitPoints.add( dx );
   }
+  /** かゆい */
+  void kayui() {
+    if( anime==null ) {
+      anime = new AnimationRender.mugen()
+      ..milliseconds = 400
+      ..spriteList = [ sp4, sp5 ]
+      ..start();
+      sp.sprenderer = anime.render;
+    }
+  }
+  
   void onDispose() {
     if( anime!=null )
       anime.stop();
