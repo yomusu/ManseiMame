@@ -67,6 +67,19 @@ TextRender  tren = new TextRender()
 ..fillColor = Color.Black
 ;
 
+TextRender  scoreTren = new TextRender.from(tren)
+..fontSize = "16px"
+..textAlign = "right"
+..textBaseline = "top"
+;
+
+TextRender  messageTren = new TextRender.from(tren)
+..fontSize = "18px"
+..textAlign = "left"
+..textBaseline = "alphabetic"
+..lineHeight = 25
+;
+
 /***********
  * 
  * タイトル画面の表示
@@ -101,32 +114,21 @@ class Title extends GScreen {
   }
 }
 
+/** ゲームのスコア */
+int score = 0;
+/** まめの残り */
+int remainsOfMame = 3;
+
+
 /**
  * ゲーム画面
  */
 class GameScreen extends GScreen {
   
-  /** ゲームのスコア */
-  int score = 0;
-  /** まめの残り */
-  int remainsOfMame = 3;
-  
-  var imgBg;
-  var imgMameIcon;
-  var scoreTren;
-  
   Boochan boo;
-  
   
   void onStart() {
     geng.objlist.disposeAll();
-    
-    imgBg = geng.imageMap["gamebg"];
-    imgMameIcon = geng.imageMap["mameicon"];
-    scoreTren = new TextRender.from(tren)
-    ..fontSize = "16px"
-    ..textAlign = "right"
-    ..textBaseline = "top";
     
     // 鬼表示
     var redOni = new Oni.red();
@@ -135,15 +137,13 @@ class GameScreen extends GScreen {
     var blueOni = new Oni.blue();
     geng.objlist.add( blueOni );
 
+    // ぶーちゃん
+    boo = new Boochan();
+    
+    //--------
     // Start表示
     var start = new StartCounter()
-    ..callback = () {
-      
-      // ぶーちゃん
-      boo = new Boochan();
-      geng.objlist.add( boo );
-      
-    };
+    ..callback = () { geng.objlist.add( boo ); };
     geng.objlist.add(start);
     start.start();
     
@@ -194,26 +194,151 @@ class GameScreen extends GScreen {
     btnList.add(mouse);
     
     //---------------------
-    // 最背面表示
-    onBackRender= ( GCanvas2D canvas ) {
-      canvas.c.drawImage(imgBg, 0, 0);
+    // 結果表示
+    boo.onOutOfScreen = () {
+      // マウスハンドラ削除
+      btnList.remove(mouse);
+      // 結果判定
+      var resultCount = 0;
+      resultCount += redOni.isOuch ? 1 : 0;
+      resultCount += blueOni.isOuch ? 1 : 0;
       
-      // 豆表示
-      var x = 340;
-      for( int i=0; i<remainsOfMame; i++ ) {
-        canvas.c.drawImage(imgMameIcon, x, 400);
-        x += 40;
-      }
-      // 得点表示
-      canvas.drawTexts(scoreTren, ["$score"], 100, 400);
+      var next = new ResultScreen();
+      next.resultCount = resultCount;
+      geng.screen = next;
     };
+    
+    //---------------------
+    // 最背面表示
+    onBackRender= drawGameBackground;
+  }
+  
+}
+
+void drawGameBackground( GCanvas2D canvas ) {
+  canvas.c.drawImage(geng.imageMap["gamebg"], 0, 0);
+  
+  // 豆表示
+  var mame = geng.imageMap["mameicon"];
+  var x = 340;
+  for( int i=0; i<remainsOfMame; i++ ) {
+    canvas.c.drawImage(mame, x, 400);
+    x += 40;
+  }
+  // 得点表示
+  canvas.drawTexts(scoreTren, ["$score"], 100, 400);
+}
+
+class ResultScreen extends GScreen {
+  
+  int resultCount = 0;
+  
+  void onStart() {
+    
+    List  serifData = serif3;
+    
+    //-----
+    // マウスハンドラ用透明なボタン→まめを投げる
+    GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
+    mouse.renderer = (c,b) {};
+    mouse.onPress = () {
+      // クリックされたらタイトルに戻る
+      geng.screen = new Title();
+    };
+    
+    //---------------------
+    // セリフデータを進める…本当はクリックする度のほうがよい？あと、字下げシステム？
+    int serifIndex = 0;
+    new Timer.periodic( const Duration(seconds:5), (t) {
+      if( (serifData.length-1) <= serifIndex) {
+        t.cancel();
+        // マウスリスナーを設定
+        btnList.add(mouse);
+      } else {
+        // セリフIndex進める
+        serifIndex += 1;
+      }
+    });
+    
+    //------
+    // 結果発表の描画
+    onFrontRender = ( GCanvas2D canvas ) {
+      canvas.drawTexts(messageTren, serifData[serifIndex], 50, 300);
+    };
+    
+    //---------------------
+    // 最背面表示
+    onBackRender= drawGameBackground;
   }
 }
+
+/*********************************************
+ * 
+ * セリフデータ
+ * 
+ */
+//まるではずれ！
+List serif1 = [
+ ["おにさんたち「ふぉっふぉっふぉっ！",
+  "　　　　　　　わるいこは たべちゃうぞ！",
+  "　　　　　　　おれたちをたいじするには",
+  "　　　　　　　１００ねんはやいぞ！」"],
+];
+//片方当り、両方あたり、だけど両方９０点以下
+List serif2 = [
+ ["おにさんたち「あぶない あぶない",
+  "　　　　　　　ちょっとは おなががかゆかったなかな？",
+  "　　　　　　　れんしゅうしてでなおしな！ガオー」"],
+];
+//片方当り、両方あたり、だけど片方９０点以上
+List serif3 = [
+ ["おにさんたち「いてててててーーー！やられたーー！",
+  "　　　　　　　けど まだひとりが げんきだから",
+  "　　　　　　　あとはまかせたぞー」"],
+ ["ぶーちゃん「あとすこしだったのに。",
+  "　　　　　　こんどこそ やっつけるぞ！」"]
+];
+//両方９０点以上
+List serif4 = [
+ ["ぶーちゃん「やったぞ！これで おにさん をやっつけたぞ！」"],
+ ["あかおにさん「いたい！いたいよー！",
+  "　　　　　　　もう こないからゆるしてよ〜」"],
+ ["ぶーちゃん「よおし！もう わるいことはしないんだよ。",
+  "　　　　　　おにがしまにかえって はやくねなさい」"],
+ ["あかおにさん「はぁい！、、、、、ふふふっ",
+  "　　　　　　　ぶーちゃんもあまいなぁ」"],
+ ["あおおにさん「そうだな あかおにどん。",
+  "　　　　　　　いまのうちに万かつサンドをたべて",
+  "　　　　　　　ちからをつけて こんどこそまけないぞ！",
+  "　　　　　　　もぐもぐ」"],
+ ["あかおにさん「ちからがモリモリわいてきたぞ！",
+  "　　　　　　　こんどこそまけないぞ！",
+  "　　　　　　　よおし しょうぶだぁ」"],
+ ["ぶーちゃん「あれっ！おにたちがげんきになっちゃった！」"],
+];
+// 2週目ダメ
+List serif5 = [
+ ["ぶーちゃん「うーん、まさかおにさんが　またげんきに",
+  "　　　　　　なるとはおもわなかったなぁ」"],
+ ["ぶーちゃん「万かつサンドをたべるとは　おにさんもかんがえたねぇ",
+  "　　　　　　またチャレンジして　おにがしまに　おいかえすぞ！」"],
+];
+// 2週目倒した
+List serif6 = [
+ ["ぶーちゃん「やったぁ！　ついにおにさんをたいじしたぞ！",
+  "　　　　　　これでへいわにくらせるね！」"],
+ ["ぶーちゃん「おなかがへったから　もーちゃんをさそって",
+  "　　　　　　にくのまんせいにしょくじに いってくるね！"],
+ ["ぶーちゃん「バイバイ」"],
+];
+
 
 /**
  * ぶーちゃん
  */
 class Boochan extends GObj {
+  
+  var onOutOfScreen;
   
   Sprite sp;
   Sprite spThrow;
@@ -248,6 +373,8 @@ class Boochan extends GObj {
       dispose();
       print("oreaida");
       // ゲーム直後メッセージ表示に遷移
+      if(onOutOfScreen!=null )
+        onOutOfScreen();
     }
     // スプライトに座標転写…これは無駄だ。Spriteにアニメ機能をもたせよう！
     sp.x = pos.x;
@@ -322,6 +449,8 @@ class Mame extends GObj {
  */
 class Oni extends GObj {
   
+  bool isOuch;
+
   Sprite  sp;
   Sprite  sp1,sp2,sp3,sp4,sp5;
   Sprite  hitSp;
@@ -366,6 +495,8 @@ class Oni extends GObj {
     hitSp = new Sprite.withImage("hit")
     ..offsetx = 13
     ..offsety = 10;
+    // ouchフラグのリセット
+    isOuch = false;
   }
   
   void onProcess( RenderList renderList ) {
@@ -410,6 +541,7 @@ class Oni extends GObj {
       ..spriteList = [ sp2, sp3 ]
       ..start();
       sp.sprenderer = anime.render;
+      isOuch = true;
     }
   }
   /** かゆい */

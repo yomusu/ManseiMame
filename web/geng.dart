@@ -152,7 +152,10 @@ class ButtonList {
       _btnList = new List();
     _btnList.add( btn );
   }
-  
+  void remove( GButton btn ) {
+    if( _btnList!=null )
+      _btnList.remove(btn);
+  }
   /** entryされたボタンすべてに対しPress処理をする */
   void onPress(PressEvent e) {
     if( _btnList!=null ) {
