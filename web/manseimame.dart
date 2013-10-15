@@ -68,13 +68,13 @@ TextRender  tren = new TextRender()
 ;
 
 TextRender  scoreTren = new TextRender.from(tren)
-..fontSize = "16px"
+..fontSize = "32px"
 ..textAlign = "right"
 ..textBaseline = "top"
 ;
 
 TextRender  messageTren = new TextRender.from(tren)
-..fontSize = "18px"
+..fontSize = "16px"
 ..textAlign = "left"
 ..textBaseline = "alphabetic"
 ..lineHeight = 25
@@ -129,6 +129,11 @@ class GameScreen extends GScreen {
   
   void onStart() {
     geng.objlist.disposeAll();
+    
+    // スコアクリア
+    score = 0;
+    // まめの数初期化
+    remainsOfMame = 3;
     
     // 鬼表示
     var redOni = new Oni.red();
@@ -203,8 +208,25 @@ class GameScreen extends GScreen {
       resultCount += redOni.isOuch ? 1 : 0;
       resultCount += blueOni.isOuch ? 1 : 0;
       
-      var next = new ResultScreen();
-      next.resultCount = resultCount;
+      var serif;
+      if( redOni.hasBeenDamaged || blueOni.hasBeenDamaged ) {
+        if( redOni.isOuch && blueOni.isOuch ) {
+          // 2匹とも真ん中
+          serif = serif4;
+        } else if( redOni.isOuch || blueOni.isOuch ) {
+          // どっちか真ん中
+          serif = serif3;
+        } else {
+          // どっちも真ん中でない
+          serif = serif2;
+        }
+      } else {
+        // 全然ハズレ
+        serif = serif1;
+      }
+      
+      var next = new MessageScreen();
+      next.serifData = serif;
       geng.screen = next;
     };
     
@@ -226,49 +248,64 @@ void drawGameBackground( GCanvas2D canvas ) {
     x += 40;
   }
   // 得点表示
-  canvas.drawTexts(scoreTren, ["$score"], 100, 400);
+  canvas.drawTexts(scoreTren, ["$score"], 140, 400);
 }
 
-class ResultScreen extends GScreen {
+/** ステージクリア後の寸劇 */
+class MessageScreen extends GScreen {
   
-  int resultCount = 0;
+  List serifData;
   
   void onStart() {
     
-    List  serifData = serif3;
+    int serifIndex = 0;
     
     //-----
-    // マウスハンドラ用透明なボタン→まめを投げる
+    // マウスハンドラ用透明なボタン→セリフを進める
     GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
     mouse.renderer = (c,b) {};
-    mouse.onPress = () {
-      // クリックされたらタイトルに戻る
-      geng.screen = new Title();
-    };
-    
-    //---------------------
-    // セリフデータを進める…本当はクリックする度のほうがよい？あと、字下げシステム？
-    int serifIndex = 0;
-    new Timer.periodic( const Duration(seconds:5), (t) {
-      if( (serifData.length-1) <= serifIndex) {
-        t.cancel();
-        // マウスリスナーを設定
-        btnList.add(mouse);
-      } else {
-        // セリフIndex進める
-        serifIndex += 1;
+    mouse.onRelease = () {
+      serifIndex++;
+      if( serifIndex >= serifData.length ) {
+        serifIndex--;
+        // クリックされたらスコア表示画面に戻る
+        geng.screen = new ScoreScreen();
       }
-    });
+    };
+    btnList.add(mouse);
     
     //------
     // 結果発表の描画
     onFrontRender = ( GCanvas2D canvas ) {
-      canvas.drawTexts(messageTren, serifData[serifIndex], 50, 300);
+      canvas.drawTexts(messageTren, serifData[serifIndex], 30, 260);
     };
     
     //---------------------
     // 最背面表示
     onBackRender= drawGameBackground;
+  }
+}
+
+class ScoreScreen extends GScreen {
+  
+  void onStart() {
+    geng.objlist.disposeAll();
+    
+    //-----
+    // マウスハンドラ用透明なボタン→セリフを進める
+    GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
+    mouse.renderer = (c,b) {};
+    mouse.onRelease = () {   geng.screen = new Title();  };
+    btnList.add(mouse);
+    
+    //---------------------
+    // 最背面表示
+    onBackRender= (canvas){
+      canvas.c.drawImage(geng.imageMap["gamebg"], 0, 0);
+      canvas.c.drawImage(geng.imageMap["resultbg"], (480-356)/2, (480-99)/2);
+      // 得点表示
+      canvas.drawTexts(scoreTren, ["$score"], 265, 242);
+    };
   }
 }
 
@@ -449,6 +486,7 @@ class Mame extends GObj {
  */
 class Oni extends GObj {
   
+  bool isKayui;
   bool isOuch;
 
   Sprite  sp;
@@ -457,6 +495,9 @@ class Oni extends GObj {
   num x,y;
   var anime;
   final List<num>  hitPoints = new List();
+  
+  /** ダメージを受けたかどうか */
+  bool get hasBeenDamaged => isKayui || isOuch;
   
   Oni.red() {
     sp1 = new Sprite.withImage("oni_r01")
@@ -497,6 +538,7 @@ class Oni extends GObj {
     ..offsety = 10;
     // ouchフラグのリセット
     isOuch = false;
+    isKayui = false;
   }
   
   void onProcess( RenderList renderList ) {
@@ -552,6 +594,7 @@ class Oni extends GObj {
       ..spriteList = [ sp4, sp5 ]
       ..start();
       sp.sprenderer = anime.render;
+      isKayui = true;
     }
   }
   
