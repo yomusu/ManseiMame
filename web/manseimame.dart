@@ -1,8 +1,14 @@
+
+library manseimame;
+
 import 'dart:html';
 import 'dart:async';
 
 import 'geng.dart';
 import 'vector.dart';
+
+part 'mamedata.dart';
+part 'manseimame2.dart';
 
 
 void main() {
@@ -10,35 +16,10 @@ void main() {
   Timer.run( () {
     
     // 画像読み込み
-    geng.imageMap
-      ..put("bg", "./img/bg.png")
-      ..put("bu01", "./img/bu01.png")
-      ..put("bu02", "./img/bu02.png")
-      ..put("bu03", "./img/bu03.png")
-      ..put("hit", "./img/hit.png")
-      ..put("mame", "./img/mame.png")
-      ..put("mameicon", "./img/mameicon.png")
-      ..put("oni_b01", "./img/oni_b01.png")
-      ..put("oni_b02", "./img/oni_b02.png")
-      ..put("oni_b03", "./img/oni_b03.png")
-      ..put("oni_b04", "./img/oni_b04.png")
-      ..put("oni_b05", "./img/oni_b05.png")
-      ..put("oni_r01", "./img/oni_r01.png")
-      ..put("oni_r02", "./img/oni_r02.png")
-      ..put("oni_r03", "./img/oni_r03.png")
-      ..put("oni_r04", "./img/oni_r04.png")
-      ..put("oni_r05", "./img/oni_r05.png")
-      ..put("resultbg", "./img/resultbg.png")
-      ..put("start", "./img/start.png")
-      ..put("starttext", "./img/starttext.png")
-      ..put("title", "./img/title.png")
-      ..put("gamebg", "./img/oldbg.png")
-      ;
+    geng.imageMap.addAll( ImageFileData );
     
     // サウンド読み込み
-    geng.soundManager.put("gameover","./sound/gameover.ogg");
-    geng.soundManager.put("miss","./sound/miss.ogg");
-    geng.soundManager.put("throw","./sound/throw.ogg");
+    geng.soundManager.addAll( SoundFileData );
     
     // ハイスコアデータ読み込み
     geng.hiscoreManager.init();
@@ -59,27 +40,6 @@ void main() {
   });
 }
 
-TextRender  tren = new TextRender()
-..fontFamily = fontFamily
-..fontSize = "28pt"
-..textAlign = "center"
-..textBaseline = "middle"
-..fillColor = Color.Black
-;
-
-TextRender  scoreTren = new TextRender.from(tren)
-..fontSize = "32px"
-..textAlign = "right"
-..textBaseline = "top"
-;
-
-TextRender  messageTren = new TextRender.from(tren)
-..fontSize = "16px"
-..textAlign = "left"
-..textBaseline = "alphabetic"
-..lineHeight = 25
-;
-
 /***********
  * 
  * タイトル画面の表示
@@ -87,28 +47,39 @@ TextRender  messageTren = new TextRender.from(tren)
  */
 class Title extends GScreen {
   
+  var _anime;
+  
   void onStart() {
     geng.objlist.disposeAll();
+    input = new InputHandler();
     
     //---------------------
     // StartGameボタン配置
-    var playbtn = new GButton(text:"ゲームスタート",width:300,height:60)
-    ..renderer = new ImageButtonRender("starttext").render
-    ..onPress = (){
+    Sprite  sp0 = new Sprite.withImage("starttext");
+    
+    _anime = new AnimationRender.mugen()
+    ..milliseconds = 500
+    ..spriteList = [sp0,null]
+    ..start();
+    
+    var sp = new Sprite.withRender( _anime.render, width:sp0.width, height:sp0.height )
+    ..x = 300
+    ..y = 380;
+    
+    // マウスボタンハンドラ
+    input.onRelease = (e) {
+      input.onRelease = null;
       geng.soundManager.play("throw");
       new Timer( const Duration(milliseconds:500), () {
         geng.screen = new GameScreen();
       });
-    }
-    ..x = 400
-    ..y = 380;
-    geng.objlist.add( playbtn );
-    btnList.add( playbtn );
+    };
     
     //---------------------
     // 最前面描画処理
     onBackRender= ( GCanvas2D canvas ) {
       canvas.c.drawImage(geng.imageMap["title"], 0, 0);
+      sp.render(canvas);
     };
     
   }
@@ -129,6 +100,7 @@ class GameScreen extends GScreen {
   
   void onStart() {
     geng.objlist.disposeAll();
+    input = new InputHandler();
     
     // スコアクリア
     score = 0;
@@ -136,19 +108,22 @@ class GameScreen extends GScreen {
     remainsOfMame = 3;
     
     // 鬼表示
-    var redOni = new Oni.red();
+    var redOni = new Oni.red()
+    ..tag = "redOni";
     geng.objlist.add( redOni );
 
-    var blueOni = new Oni.blue();
+    var blueOni = new Oni.blue()
+    ..tag = "blueOni";
     geng.objlist.add( blueOni );
 
     // ぶーちゃん
     boo = new Boochan();
+    geng.objlist.add( boo );
     
     //--------
     // Start表示
     var start = new StartCounter()
-    ..callback = () { geng.objlist.add( boo ); };
+    ..callback = () { boo.start(); };
     geng.objlist.add(start);
     start.start();
     
@@ -176,14 +151,11 @@ class GameScreen extends GScreen {
     
     //-----
     // マウスハンドラ用透明なボタン→まめを投げる
-    GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
-    mouse.renderer = (c,b) {};
-    mouse.onPress = () {
+    input.onPress = (e) {
       // クリックされた
       if( remainsOfMame > 0 ) {
         // まめ投げる
         geng.soundManager.play("throw");
-        mouse.isPress = false;
         
         Mame  mame = new Mame()
         ..onForwarded = mameConf
@@ -196,37 +168,32 @@ class GameScreen extends GScreen {
         remainsOfMame--;
       }
     };
-    btnList.add(mouse);
     
     //---------------------
     // 結果表示
     boo.onOutOfScreen = () {
+      boo.dispose();
       // マウスハンドラ削除
-      btnList.remove(mouse);
+      input.onPress = null;
       // 結果判定
-      var resultCount = 0;
-      resultCount += redOni.isOuch ? 1 : 0;
-      resultCount += blueOni.isOuch ? 1 : 0;
-      
-      var serif;
+      var next;
       if( redOni.hasBeenDamaged || blueOni.hasBeenDamaged ) {
         if( redOni.isOuch && blueOni.isOuch ) {
           // 2匹とも真ん中
-          serif = serif4;
+          next = new MessageScreen2(serif4);
         } else if( redOni.isOuch || blueOni.isOuch ) {
           // どっちか真ん中
-          serif = serif3;
+          next = new MessageScreen(serif3);
         } else {
           // どっちも真ん中でない
-          serif = serif2;
+          next = new MessageScreen(serif2);
         }
       } else {
         // 全然ハズレ
-        serif = serif1;
+        next = new MessageScreen3(serif6);
+//        next = new MessageScreen(serif1);
       }
       
-      var next = new MessageScreen();
-      next.serifData = serif;
       geng.screen = next;
     };
     
@@ -251,125 +218,6 @@ void drawGameBackground( GCanvas2D canvas ) {
   canvas.drawTexts(scoreTren, ["$score"], 140, 400);
 }
 
-/** ステージクリア後の寸劇 */
-class MessageScreen extends GScreen {
-  
-  List serifData;
-  
-  void onStart() {
-    
-    int serifIndex = 0;
-    
-    //-----
-    // マウスハンドラ用透明なボタン→セリフを進める
-    GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
-    mouse.renderer = (c,b) {};
-    mouse.onRelease = () {
-      serifIndex++;
-      if( serifIndex >= serifData.length ) {
-        serifIndex--;
-        // クリックされたらスコア表示画面に戻る
-        geng.screen = new ScoreScreen();
-      }
-    };
-    btnList.add(mouse);
-    
-    //------
-    // 結果発表の描画
-    onFrontRender = ( GCanvas2D canvas ) {
-      canvas.drawTexts(messageTren, serifData[serifIndex], 30, 260);
-    };
-    
-    //---------------------
-    // 最背面表示
-    onBackRender= drawGameBackground;
-  }
-}
-
-class ScoreScreen extends GScreen {
-  
-  void onStart() {
-    geng.objlist.disposeAll();
-    
-    //-----
-    // マウスハンドラ用透明なボタン→セリフを進める
-    GButton mouse = new GButton(x:240, y:240, width:480, height:480 );
-    mouse.renderer = (c,b) {};
-    mouse.onRelease = () {   geng.screen = new Title();  };
-    btnList.add(mouse);
-    
-    //---------------------
-    // 最背面表示
-    onBackRender= (canvas){
-      canvas.c.drawImage(geng.imageMap["gamebg"], 0, 0);
-      canvas.c.drawImage(geng.imageMap["resultbg"], (480-356)/2, (480-99)/2);
-      // 得点表示
-      canvas.drawTexts(scoreTren, ["$score"], 265, 242);
-    };
-  }
-}
-
-/*********************************************
- * 
- * セリフデータ
- * 
- */
-//まるではずれ！
-List serif1 = [
- ["おにさんたち「ふぉっふぉっふぉっ！",
-  "　　　　　　　わるいこは たべちゃうぞ！",
-  "　　　　　　　おれたちをたいじするには",
-  "　　　　　　　１００ねんはやいぞ！」"],
-];
-//片方当り、両方あたり、だけど両方９０点以下
-List serif2 = [
- ["おにさんたち「あぶない あぶない",
-  "　　　　　　　ちょっとは おなががかゆかったなかな？",
-  "　　　　　　　れんしゅうしてでなおしな！ガオー」"],
-];
-//片方当り、両方あたり、だけど片方９０点以上
-List serif3 = [
- ["おにさんたち「いてててててーーー！やられたーー！",
-  "　　　　　　　けど まだひとりが げんきだから",
-  "　　　　　　　あとはまかせたぞー」"],
- ["ぶーちゃん「あとすこしだったのに。",
-  "　　　　　　こんどこそ やっつけるぞ！」"]
-];
-//両方９０点以上
-List serif4 = [
- ["ぶーちゃん「やったぞ！これで おにさん をやっつけたぞ！」"],
- ["あかおにさん「いたい！いたいよー！",
-  "　　　　　　　もう こないからゆるしてよ〜」"],
- ["ぶーちゃん「よおし！もう わるいことはしないんだよ。",
-  "　　　　　　おにがしまにかえって はやくねなさい」"],
- ["あかおにさん「はぁい！、、、、、ふふふっ",
-  "　　　　　　　ぶーちゃんもあまいなぁ」"],
- ["あおおにさん「そうだな あかおにどん。",
-  "　　　　　　　いまのうちに万かつサンドをたべて",
-  "　　　　　　　ちからをつけて こんどこそまけないぞ！",
-  "　　　　　　　もぐもぐ」"],
- ["あかおにさん「ちからがモリモリわいてきたぞ！",
-  "　　　　　　　こんどこそまけないぞ！",
-  "　　　　　　　よおし しょうぶだぁ」"],
- ["ぶーちゃん「あれっ！おにたちがげんきになっちゃった！」"],
-];
-// 2週目ダメ
-List serif5 = [
- ["ぶーちゃん「うーん、まさかおにさんが　またげんきに",
-  "　　　　　　なるとはおもわなかったなぁ」"],
- ["ぶーちゃん「万かつサンドをたべるとは　おにさんもかんがえたねぇ",
-  "　　　　　　またチャレンジして　おにがしまに　おいかえすぞ！」"],
-];
-// 2週目倒した
-List serif6 = [
- ["ぶーちゃん「やったぁ！　ついにおにさんをたいじしたぞ！",
-  "　　　　　　これでへいわにくらせるね！」"],
- ["ぶーちゃん「おなかがへったから　もーちゃんをさそって",
-  "　　　　　　にくのまんせいにしょくじに いってくるね！"],
- ["ぶーちゃん「バイバイ」"],
-];
-
-
 /**
  * ぶーちゃん
  */
@@ -382,6 +230,7 @@ class Boochan extends GObj {
   int width=83;
   
   Vector  pos = new Vector();
+  Vector  speed = new Vector();
   var _anime;
   
   void onInit() {
@@ -396,15 +245,19 @@ class Boochan extends GObj {
     
     _anime = new AnimationRender.mugen()
     ..milliseconds = 500
-    ..spriteList = [sp01,sp02]
-    ..start();
+    ..spriteList = [sp01,sp02];
     
     sp = new Sprite.withRender( _anime.render, width:83, height:105 );
   }
   
+  void start() {
+    _anime.start();
+    speed.x = 2.0;
+  }
+  
   void onProcess( RenderList renderList ) {
     // 座標をすすめる
-    pos.x += 1;
+    pos.add( speed );
     // 画面外判定
     if( pos.x >= (480+width) ) {
       dispose();
@@ -532,13 +385,15 @@ class Oni extends GObj {
   }
   
   void onInit() {
-    sp = new Sprite.withRender((c,sp) => sp1.render(c), width:150, height:150 );
+    sp = new Sprite.withRender((c) => sp1.render(c), width:150, height:150 );
     hitSp = new Sprite.withImage("hit")
     ..offsetx = 13
     ..offsety = 10;
     // ouchフラグのリセット
     isOuch = false;
     isKayui = false;
+    // ヒット表示のクリア
+    hitPoints.clear();
   }
   
   void onProcess( RenderList renderList ) {
@@ -573,6 +428,14 @@ class Oni extends GObj {
   void putHitMark( num px ) {
     var dx = px - x;
     hitPoints.add( dx );
+  }
+  
+  void fukkatsu() {
+    if( anime!=null ) {
+      anime.stop();
+      anime=null;
+    }
+    onInit();
   }
   
   /** あたり */

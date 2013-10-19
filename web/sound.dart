@@ -32,6 +32,10 @@ class SoundManager {
     }
   }
   
+  void addAll( Map map ) {
+    map.forEach( (k,v) => put( k, v ) );
+  }
+
   /**
    * サウンドファイルを読み込む
    */

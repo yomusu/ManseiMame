@@ -1,7 +1,7 @@
 part of geng;
 
 
-typedef void SpriteRender( GCanvas2D c, Sprite sp );
+typedef void SpriteRender( GCanvas2D c );
 
 
 class ImageSprite extends Sprite {
@@ -18,7 +18,7 @@ class ImageSprite extends Sprite {
     if( img!=null )
       image = img;
     
-    sprenderer = (c,sp) {
+    sprenderer = (c) {
       c.c.drawImageScaled(image, -offsetx, -offsety, _w, _h);
     };
     
@@ -32,7 +32,6 @@ class ImageSprite extends Sprite {
 
 /**
  * いわゆるスプライト
- * Mouseイベントもやる必要あるかもねー
  */
 class Sprite {
   
@@ -91,7 +90,7 @@ class Sprite {
       if( _scale!=null )
         c.c.scale( _scale, _scale );
       
-      sprenderer( c, this );
+      sprenderer( c );
       c.c.restore();
     }
   }
@@ -189,7 +188,7 @@ class AnimationRender {
   }
   
   /** レンダリング */
-  void render( GCanvas2D canvas, Sprite sp ) {
+  void render( GCanvas2D canvas ) {
     var s = spriteList[count];
     if( s!=null )
       s.render(canvas);

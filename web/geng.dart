@@ -11,6 +11,7 @@ import 'sound.dart';
 part 'sprite.dart';
 part 'canvasutil.dart';
 part 'gengutil.dart';
+part 'ginput.dart';
 
 
 final String  fontFamily = '"ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", Meiryo, "メイリオ", "ＭＳ Ｐゴシック", Verdana, Geneva, Arial, Helvetica';
@@ -26,6 +27,9 @@ abstract class GObj {
   
   /** Disposeされたかどうか */
   bool get isDisposed => _isDisposed;
+  
+  /** 識別するためのタグ */
+  String tag;
   
   // オーバーライドすべきメソッド ---
   
@@ -51,150 +55,6 @@ abstract class GObj {
 }
 
 
-DefaultButtonRender  defaultButtonRenderer = new DefaultButtonRender();
-
-typedef void ButtonRenderer( GCanvas2D canvas, GButton btn );
-
-class GButton extends GObj {
-  
-  static const int  HIDDEN = -1;
-  static const int  DISABLE= 0;
-  static const int  ACTIVE = 1;
-  static const int  ROLLON = 3;
-  static const int  PRESSED= 7;
-  
-  // member properties ----
-  
-  num x;
-  num y;
-  num width;
-  num height;
-  
-  /** Z値 */
-  num z = 1000;
-  
-  // getter properties ----
-  
-  num get left => x - (width/2);
-  num get top  => y - (height/2);
-  
-  int get status {
-    
-    if( isVisible==false )
-      return HIDDEN;
-    if( isEnable==false )
-      return DISABLE;
-    
-    if( isPress )
-      return PRESSED;
-    if( isOn )
-      return ROLLON;
-    
-    return ACTIVE;
-  }
-  
-  
-  var onPress = null;
-  var onRelease = null;
-  
-  bool  isOn = false;
-  bool  isPress = false;
-  bool  isVisible = true;
-  bool  isEnable = true;
-  
-  String  text;
-  
-  /** ボタンレンダラ:差し替え可能 */
-  ButtonRenderer renderer = defaultButtonRenderer.render;
-  
-  
-  /** Default Constructor */
-  GButton({this.text:null, this.x:320, this.y:180, this.width:100, this.height:50});
-  
-  
-  bool isIn( num mx, num my ) {
-    
-    if( isVisible==false )
-      return false;
-    if( isEnable==false )
-      return false;
-    
-    var xx = mx - left;
-    var yy = my - top;
-    bool  inH = ( xx>=0 && xx<width );
-    bool  inV = ( yy>=0 && yy<height);
-    
-    return ( inH && inV );
-  }
-  
-  void onInit(){}
-  
-  void onProcess( RenderList renderList ) {
-    var s = status;
-    if( s!=HIDDEN )
-      renderList.add(z, (c)=>renderer(c,this) );
-  }
-  
-  void onDispose(){}
-}
-
-/**
- * ボタンリスト
- * ボタンっていうか入力デバイスをハンドルするオブジェクト
- */
-class ButtonList {
-  
-  /** List of Buttons */ 
-  List<GButton>  _btnList = null;
-
-  void add( GButton btn ) {
-    if( _btnList==null )
-      _btnList = new List();
-    _btnList.add( btn );
-  }
-  void remove( GButton btn ) {
-    if( _btnList!=null )
-      _btnList.remove(btn);
-  }
-  /** entryされたボタンすべてに対しPress処理をする */
-  void onPress(PressEvent e) {
-    if( _btnList!=null ) {
-      _btnList.where( (b) => b.isPress==false )
-        .forEach( (GButton b) {
-          if( b.isIn( e.x, e.y ) ) {
-            b.isPress = true;
-            if( b.onPress!=null )
-              b.onPress();
-          }
-        });
-    }
-  }
-  
-  /** entryされたボタンすべてに対しPress処理をする */
-  void onRelease(PressEvent e) {
-    if( _btnList!=null ) {
-      _btnList.where( (b) => b.isPress )
-        .forEach( (GButton b) {
-          if( b.onRelease!=null ) {
-            b.onRelease();
-            b.isPress = false;
-          }
-        });
-    }
-  }
-  
-  /** entryされたボタンすべてに対しMove処理をする */
-  void onMouseMove( int x, int y ) {
-    if( _btnList!=null ) {
-      _btnList.where( (b) => b.isPress==false )
-        .forEach( (GButton b) {
-          b.isOn = b.isIn( x, y );
-        });
-    }
-  }
-  
-}
-
 /**
  * 画面の基本クラス
  */
@@ -206,7 +66,7 @@ abstract class GScreen {
   // メンバ変数 ---
   
   /** List of Buttons */ 
-  ButtonList  btnList = new ButtonList();
+  InputHandler  input = new InputHandler();
   
   /** 毎フレームの処理 */
   var onProcess = null;
@@ -217,12 +77,6 @@ abstract class GScreen {
   };
   /** 最前面描画 */
   var onFrontRender = null;
-  
-  /** 入力デバイスのプレスイベント */
-  void onPress( PressEvent e ) => btnList.onPress(e);
-  void onRelease( PressEvent e ) => btnList.onRelease(e);
-  void onMove( int x, int y ) => btnList.onMouseMove(x, y);
-  var onMoveOut = null;
   
   
   // オーバーライドすべきメソッド ---
@@ -330,6 +184,10 @@ class ImageMap {
     img.onLoad.listen( (v)=>print("loaded image : $key") ); 
   }
   
+  void addAll( Map map ) {
+    map.forEach( (k,v) => put( k, v ) );
+  }
+  
   ImageElement operator [](Object key) => map[key];
   
   void operator []=(String k, ImageElement v) {
@@ -391,6 +249,18 @@ class GObjList {
     if( test!=null )
       return r.where( (e)=>test(e) );
     return r;
+  }
+  
+  /**
+   * 指定したタグを持つGObjを探す
+   * 最初に見つかったひとつ
+   */
+  GObj query( String tag ) {
+    for( var o in objlist ) {
+      if( o.tag == tag )
+        return o;
+    }
+    return null;
   }
 }
 
@@ -458,50 +328,50 @@ class GEng {
     
     // MouseDownからPressイベントを転送
     canvas.onMouseDown.listen( (MouseEvent e) {
-      if( _screen!=null && _screen.onPress!=null ) {
+      if( _screen!=null && _screen.input!=null ) {
         e.preventDefault();
-        _screen.onPress( createPressEvent(e) );
+        _screen.input.pressEvent( createPressEvent(e) );
         print( "e.client.x=${e.client.x} offsetLeft=${geng.canvas.offsetLeft}");
       }
     });
     canvas.onMouseUp.listen( (MouseEvent e) {
-      if( _screen!=null && _screen.onRelease!=null ) {
+      if( _screen!=null && _screen.input!=null) {
         e.preventDefault();
-        _screen.onRelease( createPressEvent(e) );
+        _screen.input.releaseEvent( createPressEvent(e) );
       }
     });
     canvas.onMouseMove.listen( (MouseEvent e) {
-      if( _screen!=null && _screen.onMove!=null ) {
+      if( _screen!=null && _screen.input!=null) {
         var x = (e.client.x - geng.canvas.offsetLeft) ~/ _scale;
         var y = (e.client.y - geng.canvas.offsetTop) ~/ _scale;
-        _screen.onMove( x, y );
+        _screen.input.mouseMoveEvent( x, y );
       }
     });
     canvas.onMouseOut.listen( (MouseEvent e) {
-      if( _screen!=null && _screen.onMoveOut!=null )
-        _screen.onMoveOut();
+      if( _screen!=null && _screen.input!=null)
+        _screen.input.moveOutEvent();
     });
     // タッチイベント for スマホ
     PressEvent  backupForTouch = null;
     canvas.onTouchStart.listen( (TouchEvent e) {
-      if( _screen!=null && _screen.onPress!=null ) {
+      if( _screen!=null && _screen.input!=null) {
         e.preventDefault();
         var event = createPressEvent(e);
-        _screen.onPress(event);
+        _screen.input.pressEvent(event);
         backupForTouch = event;
       }
     });
     canvas.onTouchMove.listen( (TouchEvent e) {
-      if( _screen!=null && _screen.onMoveOut!=null ) {
+      if( _screen!=null && _screen.input!=null) {
         var event = createPressEvent(e);
-        _screen.onMoveOut();
+        _screen.input.moveOutEvent();
         backupForTouch = event;
       }
     });
     canvas.onTouchEnd.listen( (TouchEvent e) {
-      if( _screen!=null && _screen.onRelease!=null ) {
+      if( _screen!=null && _screen.input!=null) {
         e.preventDefault();
-        _screen.onRelease(backupForTouch);
+        _screen.input.releaseEvent(backupForTouch);
       }
     });
     
