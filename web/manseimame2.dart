@@ -81,7 +81,8 @@ class MessageScreen2 extends GScreen {
         if( serifIndex >= serifData.length ) {
           serifIndex--;
           // クリックされたらスコア表示画面に戻る
-          geng.screen = new ScoreScreen();
+          gameClearCount = 1;
+          geng.screen = new GameScreen();
         }
       };
     };
@@ -166,6 +167,8 @@ class ScoreScreen extends GScreen {
       // 得点表示
       canvas.drawTexts(scoreTren, ["$score"], 265, 242);
     };
+    
+    geng.soundManager.play("gameover");
   }
 }
 

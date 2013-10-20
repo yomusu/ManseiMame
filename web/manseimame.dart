@@ -82,6 +82,13 @@ class Title extends GScreen {
       sp.render(canvas);
     };
     
+    //---------------------
+    // ゲームデータのクリア
+    
+    // ゲームの周回数クリア
+    gameClearCount = 0;
+    // スコアクリア
+    score = 0;
   }
 }
 
@@ -89,7 +96,8 @@ class Title extends GScreen {
 int score = 0;
 /** まめの残り */
 int remainsOfMame = 3;
-
+/** ゲームのクリア数 */
+int gameClearCount = 0;
 
 /**
  * ゲーム画面
@@ -102,8 +110,6 @@ class GameScreen extends GScreen {
     geng.objlist.disposeAll();
     input = new InputHandler();
     
-    // スコアクリア
-    score = 0;
     // まめの数初期化
     remainsOfMame = 3;
     
@@ -119,13 +125,6 @@ class GameScreen extends GScreen {
     // ぶーちゃん
     boo = new Boochan();
     geng.objlist.add( boo );
-    
-    //--------
-    // Start表示
-    var start = new StartCounter()
-    ..callback = () { boo.start(); };
-    geng.objlist.add(start);
-    start.start();
     
     //-------
     // まめと鬼の当たり判定
@@ -151,7 +150,8 @@ class GameScreen extends GScreen {
     
     //-----
     // マウスハンドラ用透明なボタン→まめを投げる
-    input.onPress = (e) {
+    // startしてから有効となる
+    var onPress = (e) {
       // クリックされた
       if( remainsOfMame > 0 ) {
         // まめ投げる
@@ -169,6 +169,23 @@ class GameScreen extends GScreen {
       }
     };
     
+    //--------
+    // Start表示
+    var start = new StartCounter()
+    ..callback = () {
+      // ぶーちゃんの動作開始
+      boo.start();
+      // 2週目だったら鬼の動きを設定
+      if( gameClearCount==1 ) {
+        redOni.speed.x = 1.0;
+        blueOni.speed.x = 1.0;
+      }
+      // 入力受付
+      input.onPress = onPress;
+    };
+    geng.objlist.add(start);
+    start.start();
+    
     //---------------------
     // 結果表示
     boo.onOutOfScreen = () {
@@ -177,21 +194,33 @@ class GameScreen extends GScreen {
       input.onPress = null;
       // 結果判定
       var next;
-      if( redOni.hasBeenDamaged || blueOni.hasBeenDamaged ) {
-        if( redOni.isOuch && blueOni.isOuch ) {
-          // 2匹とも真ん中
-          next = new MessageScreen2(serif4);
-        } else if( redOni.isOuch || blueOni.isOuch ) {
-          // どっちか真ん中
-          next = new MessageScreen(serif3);
+      if( gameClearCount==0 ) {
+        // 1週目
+        if( redOni.hasBeenDamaged || blueOni.hasBeenDamaged ) {
+          if( redOni.isOuch && blueOni.isOuch ) {
+            // 2匹とも真ん中
+            next = new MessageScreen2(serif4);
+          } else if( redOni.isOuch || blueOni.isOuch ) {
+            // どっちか真ん中
+            next = new MessageScreen(serif3);
+          } else {
+            // どっちも真ん中でない
+            next = new MessageScreen(serif2);
+          }
         } else {
-          // どっちも真ん中でない
-          next = new MessageScreen(serif2);
+          // 全然ハズレ
+          next = new MessageScreen(serif1);
+          geng.soundManager.play("miss");
         }
       } else {
-        // 全然ハズレ
-        next = new MessageScreen3(serif6);
-//        next = new MessageScreen(serif1);
+        // 2週目
+        if( redOni.isOuch && blueOni.isOuch ) {
+          // 2匹とも真ん中
+          next = new MessageScreen3(serif6);
+        } else {
+          // 2匹とも真ん中
+          next = new MessageScreen(serif5);
+        }
       }
       
       geng.screen = next;
@@ -261,7 +290,6 @@ class Boochan extends GObj {
     // 画面外判定
     if( pos.x >= (480+width) ) {
       dispose();
-      print("oreaida");
       // ゲーム直後メッセージ表示に遷移
       if(onOutOfScreen!=null )
         onOutOfScreen();
@@ -342,15 +370,22 @@ class Oni extends GObj {
   bool isKayui;
   bool isOuch;
 
+  Vector  speed = new Vector();
+  Vector  move = new Vector();
+  Vector  dpos = new Vector();
+  
   Sprite  sp;
   Sprite  sp1,sp2,sp3,sp4,sp5;
   Sprite  hitSp;
-  num x,y;
   var anime;
   final List<num>  hitPoints = new List();
   
   /** ダメージを受けたかどうか */
   bool get hasBeenDamaged => isKayui || isOuch;
+  
+  num get x => dpos.x + move.x;
+  num get y => dpos.y + move.y;
+  
   
   Oni.red() {
     sp1 = new Sprite.withImage("oni_r01")
@@ -364,8 +399,7 @@ class Oni extends GObj {
     sp5 = new Sprite.withImage("oni_r05")
     ..offset = new Point( 132, 159 );
     // 初期の位置
-    y = 156;
-    x = 140;
+    dpos..x = 140.0 ..y = 156.0;
   }
   
   Oni.blue() {
@@ -380,8 +414,7 @@ class Oni extends GObj {
     sp5 = new Sprite.withImage("oni_b05")
     ..offset = new Point( 126, 149 );
     // 初期の位置
-    y = 156;
-    x = 340;
+    dpos..x=340.0 ..y = 156.0;
   }
   
   void onInit() {
@@ -397,8 +430,14 @@ class Oni extends GObj {
   }
   
   void onProcess( RenderList renderList ) {
-    sp.x = this.x;
-    sp.y = this.y;
+    
+    move.add( speed );
+    if( move.x.abs() > 32 )
+      speed.mul( -1.0 );
+    
+    sp.x = x;
+    sp.y = y;
+    
     renderList.add(10, (c){
       sp.render(c);
       // ヒットマークを描画
@@ -447,6 +486,7 @@ class Oni extends GObj {
       ..start();
       sp.sprenderer = anime.render;
       isOuch = true;
+      speed.x = 0.0;
     }
   }
   /** かゆい */
@@ -458,6 +498,7 @@ class Oni extends GObj {
       ..start();
       sp.sprenderer = anime.render;
       isKayui = true;
+      speed.x = 0.0;
     }
   }
   
@@ -493,7 +534,7 @@ class StartCounter extends GObj {
     
     sp = new Sprite.withRender(_loop.render, width:img.width , height:img.height )
     ..x = 480 ~/ 2
-    ..y = 400 ~/ 2;
+    ..y = 260;
   }
   void onProcess( RenderList renderList ) {
     renderList.add(1000, sp.render );

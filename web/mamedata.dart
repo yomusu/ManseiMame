@@ -113,7 +113,7 @@ TextRender  scoreTren = new TextRender.from(tren)
 ;
 
 TextRender  messageTren = new TextRender.from(tren)
-..fontSize = "16px"
+..fontSize = "15px"
 ..textAlign = "left"
 ..textBaseline = "alphabetic"
 ..lineHeight = 25
