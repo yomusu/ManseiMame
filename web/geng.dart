@@ -275,7 +275,7 @@ class GEng {
   // Private Member --------
   
   GScreen _screen = null;
-  Rect  _rect;
+  Rectangle  _rect;
   
   // Property --------
   
@@ -301,7 +301,7 @@ class GEng {
   }
   
   /** フィールドの大きさ */
-  Rect get rect => _rect;
+  Rectangle get rect => _rect;
   
   num _scale = 1.0;
   
@@ -311,7 +311,7 @@ class GEng {
   void initField( { int width, int height, num scale:1 }) {
     
     _scale = scale;
-    _rect = new Rect(0,0,width,height);
+    _rect = new Rectangle(0,0,width,height);
     
     var w = (width * _scale).toInt();
     var h = (height * _scale).toInt();
