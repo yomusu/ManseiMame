@@ -17,6 +17,20 @@ part 'ginput.dart';
 final String  fontFamily = '"ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", Meiryo, "メイリオ", "ＭＳ Ｐゴシック", Verdana, Geneva, Arial, Helvetica';
 
 /**
+ * Process処理に渡されるハンドルオブジェクト
+ */
+class GPInfo {
+  
+  int _numRepaint = 0;
+  
+  bool get isNeedRepaint => _numRepaint > 0;
+  
+  void repaint() {
+    _numRepaint++;
+  }
+}
+
+/**
  * 物体ひとつ
  * 定義は…
  */
@@ -36,15 +50,20 @@ abstract class GObj {
   /** 最初に呼ばれる */
   void onInit();
   
-  /** レンダリング */
-  void onProcess( RenderList renderList );
+  /** Process処理 */
+  void onProcess( GPInfo handle );
+  
+  /** Renderの登録 */
+  void onPrepareRender( RenderList renderList );
   
   /** 最後に呼ばれる */
   void onDispose();
   
   // 操作するためのメソッド ---
   
-  void process( RenderList renderList ) => onProcess( renderList );
+  void process( GPInfo handle ) => onProcess( handle );
+  
+  void prepareRender( RenderList renderList ) => onPrepareRender( renderList );
   
   /** 廃棄する */
   void dispose() {
@@ -95,37 +114,41 @@ abstract class GScreen {
       onProcess();
     
     // Do Processing every object
-    geng.objlist.processAll(_renderList);
+    var handle = new GPInfo();
+    geng.objlist.processAll(handle);
     
-    //--
-    // render
-    g2d.canvas = geng.backcanvas;
-    
-    // 最背面の描画
-    if( onBackRender!=null ) {
-      onBackRender( g2d );
-    } else {
-      g2d.c.setFillColorRgb(255, 255, 255, 1.0);
-      g2d.c.fillRect(0,0, geng.rect.width, geng.rect.height);
-    }
-    
-    // Do Rendering
-    _renderList.renderAll( g2d );
+    // 必要があればrender
+    if( geng.popRepaintRequest() ) {
+      
+      geng.objlist.prepareRenderAll(_renderList);
+      g2d.canvas = geng.backcanvas;
+      
+      // 最背面の描画
+      if( onBackRender!=null ) {
+        onBackRender( g2d );
+      } else {
+        g2d.c.setFillColorRgb(255, 255, 255, 1.0);
+        g2d.c.fillRect(0,0, geng.rect.width, geng.rect.height);
+      }
+      
+      // Do Rendering
+      _renderList.renderAll( g2d );
 
 //    print( geng.rect );
-    // 終わったら削除
-    _renderList.clear();
-    geng.objlist.gcObj();
-    
-    // 最前面の描画
-    if( onFrontRender!=null ) {
-      onFrontRender( g2d );
+      // 終わったら削除
+      _renderList.clear();
+      geng.objlist.gcObj();
+      
+      // 最前面の描画
+      if( onFrontRender!=null ) {
+        onFrontRender( g2d );
+      }
+      
+      g2d.canvas = null;
+      
+      // ダブルバッファのフリップ
+      geng.flipBuffer();
     }
-    
-    g2d.canvas = null;
-    
-    // ダブルバッファのフリップ
-    geng.flipBuffer();
   }
 }
 
@@ -233,15 +256,21 @@ class GObjList {
   /**
    * 全てのオブジェクトをProcessしてrenderする
    */
-  void processAll( RenderList renderList ) {
+  void processAll( GPInfo handle ) {
     
     // 追加オブジェクトリストを本物のリストに追加
     objlist.addAll( _addObjlist );
     _addObjlist.clear();
     
     // Do Processing every object
-    where().forEach( (GObj v)=> v.process(renderList) );
-    
+    where().forEach( (GObj v)=> v.process(handle) );
+  }
+  
+  /**
+   * 全てのオブジェクトをProcessしてrenderする
+   */
+  void prepareRenderAll( RenderList renderList ) {
+    where().forEach( (GObj v)=> v.prepareRender(renderList) );
   }
   
   Iterable<GObj> where( [bool test(GObj obj)] ) {
@@ -295,8 +324,10 @@ class GEng {
   set screen( GScreen s ) {
     Timer.run( () {
       _screen = s;
-      if( s!=null )
+      if( s!=null ) {
         s.onStart();
+        geng.repaint();
+      }
     });
   }
   
@@ -434,6 +465,19 @@ class GEng {
     var r = rand.nextDouble();
     return (n1*r) + (n2*(1.0-r));
   }
+  
+  /** 再描画をリクエストする */
+  void repaint() {
+    _repaintCount++;
+  }
+  
+  bool popRepaintRequest() {
+    var r = _repaintCount > 0;
+    _repaintCount = 0;
+    return r;
+  }
+  
+  int _repaintCount = 0;
 }
 
 GEng geng = new GEng();

@@ -78,7 +78,11 @@ class GButton extends GObj {
   
   void onInit(){}
   
-  void onProcess( RenderList renderList ) {
+  void onProcess( GPInfo handle ) {
+    
+  }
+  
+  void onPrepareRender( RenderList renderList ) {
     var s = status;
     if( s!=HIDDEN )
       renderList.add(z, (c)=>renderer(c,this) );

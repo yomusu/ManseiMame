@@ -197,6 +197,7 @@ class AnimationRender {
   void start() {
     _timer = new Timer.periodic( new Duration(milliseconds:milliseconds), (t) {
       count++;
+      geng.repaint();
       if( count >= spriteList.length )
         animeEndCallback();
     });

@@ -284,7 +284,7 @@ class Boochan extends GObj {
     speed.x = 2.0;
   }
   
-  void onProcess( RenderList renderList ) {
+  void onProcess( GPInfo handle ) {
     // 座標をすすめる
     pos.add( speed );
     // 画面外判定
@@ -294,10 +294,13 @@ class Boochan extends GObj {
       if(onOutOfScreen!=null )
         onOutOfScreen();
     }
-    // スプライトに座標転写…これは無駄だ。Spriteにアニメ機能をもたせよう！
+    // スプライトに座標転写
     sp.x = pos.x;
     sp.y = pos.y;
     
+    geng.repaint();
+  }
+  void onPrepareRender( RenderList renderList ) {
     renderList.add( 100, sp.render );
   }
   
@@ -323,7 +326,7 @@ class Mame extends GObj {
     ..offset = new Point(14,5);
   }
   
-  void onProcess( RenderList renderList ) {
+  void onProcess(GPInfo handle){
     // まめをすすめる
     oldpos.set(pos);
     pos.add(speed);
@@ -337,6 +340,10 @@ class Mame extends GObj {
     _sp.x = pos.x;
     _sp.y = pos.y;
     
+    geng.repaint();
+  }
+  
+  void onPrepareRender( RenderList renderList ) {
     renderList.add( 100, _sp.render );
   }
   
@@ -429,7 +436,7 @@ class Oni extends GObj {
     hitPoints.clear();
   }
   
-  void onProcess( RenderList renderList ) {
+  void onProcess( GPInfo handle ) {
     
     move.add( speed );
     if( move.x.abs() > 32 )
@@ -438,6 +445,11 @@ class Oni extends GObj {
     sp.x = x;
     sp.y = y;
     
+    if( speed.scalar().abs() > 0 )
+      geng.repaint();
+  }
+  
+  void onPrepareRender( RenderList renderList ) {
     renderList.add(10, (c){
       sp.render(c);
       // ヒットマークを描画
@@ -536,7 +548,10 @@ class StartCounter extends GObj {
     ..x = 480 ~/ 2
     ..y = 260;
   }
-  void onProcess( RenderList renderList ) {
+  
+  void onProcess(GPInfo handle){}
+  
+  void onPrepareRender( RenderList renderList ) {
     renderList.add(1000, sp.render );
   }
   void onDispose() {
