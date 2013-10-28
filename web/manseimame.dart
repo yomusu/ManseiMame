@@ -55,16 +55,17 @@ class Title extends GScreen {
     
     //---------------------
     // StartGameボタン配置
-    Sprite  sp0 = new Sprite.withImage("starttext");
+    GImage  sp0 = new GImage("starttext",offsetx:67,offsety:23);
+    
+    var sp = new ImageSprite( sp0 )
+    ..x = 300
+    ..y = 380;
     
     _anime = new AnimationRender.mugen()
     ..milliseconds = 500
+    ..dstSp = sp
     ..spriteList = [sp0,null]
     ..start();
-    
-    var sp = new Sprite.withRender( _anime.render, width:sp0.width, height:sp0.height )
-    ..x = 300
-    ..y = 380;
     
     // マウスボタンハンドラ
     input.onRelease = (e) {
@@ -156,6 +157,7 @@ class GameScreen extends GScreen {
       if( remainsOfMame > 0 ) {
         // まめ投げる
         geng.soundManager.play("throw");
+        boo.throwMame();
         
         Mame  mame = new Mame()
         ..onForwarded = mameConf
@@ -254,34 +256,49 @@ class Boochan extends GObj {
   
   var onOutOfScreen;
   
-  Sprite sp;
-  Sprite spThrow;
+  ImageSprite sp;
+  GImage spThrow;
   int width=83;
   
   Vector  pos = new Vector();
   Vector  speed = new Vector();
-  var _anime;
+  AnimationRender _anime;
+  AnimationRender _throwAnime;
   
   void onInit() {
-    var sp01 = new Sprite.withImage("bu01")
-    ..offset = new Point(83~/2,105~/2);
-    var sp02 = new Sprite.withImage("bu02")
-    ..offset = new Point(83~/2,105~/2);
-    spThrow = new Sprite.withImage("bu03");
+    var sp01 = new GImage("bu01",offsetx:83~/2,offsety:105~/2);
+    var sp02 = new GImage("bu02",offsetx:83~/2,offsety:105~/2);
+    spThrow = new GImage("bu03",offsetx:72~/2,offsety:108~/2);
     
     pos.x = -width.toDouble();
     pos.y = 320.0;
     
+    sp = new ImageSprite(sp01);
+    
     _anime = new AnimationRender.mugen()
     ..milliseconds = 500
+    ..dstSp = sp
     ..spriteList = [sp01,sp02];
-    
-    sp = new Sprite.withRender( _anime.render, width:83, height:105 );
   }
   
   void start() {
     _anime.start();
     speed.x = 2.0;
+  }
+  
+  void throwMame() {
+    
+    _anime.stop();
+    
+    var a = new AnimationRender.oneShot( () {
+      if(_anime!=null)
+        _anime.start();
+    })
+    ..milliseconds = 200
+    ..dstSp = sp
+    ..spriteList = [spThrow];
+    
+    a.start();
   }
   
   void onProcess( GPInfo handle ) {
@@ -305,7 +322,10 @@ class Boochan extends GObj {
   }
   
   void onDispose() {
-    _anime.stop();
+    if( _anime!=null ) {
+      _anime.stop();
+      _anime = null;
+    }
   }
 }
 
@@ -314,7 +334,7 @@ class Boochan extends GObj {
  */
 class Mame extends GObj {
 
-  Sprite  _sp;
+  ImageSprite  _sp;
   final Vector  oldpos = new Vector();
   final Vector  pos = new Vector();
   final Vector  speed = new Vector();
@@ -322,8 +342,8 @@ class Mame extends GObj {
   var onForwarded;
   
   void onInit() {
-    _sp = new Sprite.withImage("mame")
-    ..offset = new Point(14,5);
+    var img = new GImage("mame",offsetx:14,offsety:5);
+    _sp = new ImageSprite(img);
   }
   
   void onProcess(GPInfo handle){
@@ -382,7 +402,7 @@ class Oni extends GObj {
   Vector  dpos = new Vector();
   
   Sprite  sp;
-  Sprite  sp1,sp2,sp3,sp4,sp5;
+  GImage  sp1,sp2,sp3,sp4,sp5;
   Sprite  hitSp;
   var anime;
   final List<num>  hitPoints = new List();
@@ -395,40 +415,28 @@ class Oni extends GObj {
   
   
   Oni.red() {
-    sp1 = new Sprite.withImage("oni_r01")
-    ..offset = new Point( 124, 146 );
-    sp2 = new Sprite.withImage("oni_r02")
-    ..offset = new Point( 125, 144 );
-    sp3 = new Sprite.withImage("oni_r03")
-    ..offset = new Point( 125, 150 );
-    sp4 = new Sprite.withImage("oni_r04")
-    ..offset = new Point( 120, 155 );
-    sp5 = new Sprite.withImage("oni_r05")
-    ..offset = new Point( 132, 159 );
+    sp1 = new GImage("oni_r01",offsetx:124, offsety:146 );
+    sp2 = new GImage("oni_r02", offsetx:125, offsety:144 );
+    sp3 = new GImage("oni_r03", offsetx:125, offsety:150 );
+    sp4 = new GImage("oni_r04", offsetx:120, offsety:155 );
+    sp5 = new GImage("oni_r05", offsetx:132, offsety:159 );
     // 初期の位置
     dpos..x = 140.0 ..y = 156.0;
   }
   
   Oni.blue() {
-    sp1 = new Sprite.withImage("oni_b01")
-    ..offset = new Point( 109, 145 );
-    sp2 = new Sprite.withImage("oni_b02")
-    ..offset = new Point( 109, 156 );
-    sp3 = new Sprite.withImage("oni_b03")
-    ..offset = new Point( 109, 159 );
-    sp4 = new Sprite.withImage("oni_b04")
-    ..offset = new Point( 114, 145 );
-    sp5 = new Sprite.withImage("oni_b05")
-    ..offset = new Point( 126, 149 );
+    sp1 = new GImage("oni_b01",offsetx:109, offsety:145 );
+    sp2 = new GImage("oni_b02",offsetx:109, offsety:156 );
+    sp3 = new GImage("oni_b03",offsetx:109, offsety:159 );
+    sp4 = new GImage("oni_b04",offsetx:114, offsety:145 );
+    sp5 = new GImage("oni_b05",offsetx:126, offsety:149 );
     // 初期の位置
     dpos..x=340.0 ..y = 156.0;
   }
   
   void onInit() {
-    sp = new Sprite.withRender((c) => sp1.render(c), width:150, height:150 );
-    hitSp = new Sprite.withImage("hit")
-    ..offsetx = 13
-    ..offsety = 10;
+    sp = new ImageSprite( sp1 );
+    hitSp = new ImageSprite( new GImage("hit",offsetx:13,offsety:10) );
     // ouchフラグのリセット
     isOuch = false;
     isKayui = false;
@@ -494,9 +502,9 @@ class Oni extends GObj {
     if( anime==null ) {
       anime = new AnimationRender.mugen()
       ..milliseconds = 400
+      ..dstSp = sp
       ..spriteList = [ sp2, sp3 ]
       ..start();
-      sp.sprenderer = anime.render;
       isOuch = true;
       speed.x = 0.0;
     }
@@ -506,9 +514,9 @@ class Oni extends GObj {
     if( anime==null ) {
       anime = new AnimationRender.mugen()
       ..milliseconds = 400
+      ..dstSp = sp
       ..spriteList = [ sp4, sp5 ]
       ..start();
-      sp.sprenderer = anime.render;
       isKayui = true;
       speed.x = 0.0;
     }
@@ -531,22 +539,21 @@ class StartCounter extends GObj {
   
   void onInit() {
     
-    Sprite  img = new Sprite.withImage("start");
-    img.offsetx = img.width ~/ 2;
-    img.offsety = img.height ~/ 2;
+    GImage  img = new GImage("start",offsetx:52,offsety:13);
+    
+    sp = new ImageSprite(img)
+    ..x = 480 ~/ 2
+    ..y = 260;
     
     _loop = new AnimationRender.loop( 3, (){
       callback();
       // 自身の廃棄処理
       dispose();
     })
+    ..dstSp = sp
     ..milliseconds = 500;
     _loop.add( img );
     _loop.add( null );
-    
-    sp = new Sprite.withRender(_loop.render, width:img.width , height:img.height )
-    ..x = 480 ~/ 2
-    ..y = 260;
   }
   
   void onProcess(GPInfo handle){}

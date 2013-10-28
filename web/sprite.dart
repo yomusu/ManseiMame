@@ -4,30 +4,50 @@ part of geng;
 typedef void SpriteRender( GCanvas2D c );
 
 
-class ImageSprite extends Sprite {
+class GImage {
   
   ImageElement  image;
+  num offsetx = 0,
+      offsety = 0;
+  
+  num get width => image.width;
+  num get height=> image.height;
+  
+  GImage( String imgKey, { num offsetx:0, num offsety:0 } ) {
+    image = geng.imageMap[imgKey];
+    this.offsetx = offsetx;
+    this.offsety = offsety;
+  }
+}
+
+
+class ImageSprite extends Sprite {
+  
+  GImage  _image;
+  
+  set image( GImage img ) {
+    _image = img;
+    if( img!=null ) {
+      _w = img.width;
+      _h = img.height;
+      offsetx = img.offsetx;
+      offsety = img.offsety;
+    }
+  }
   
   /** 
    * img:表示する画像をImageElement形式で
    * imgkey:表示する画像をimageMapのkeyで
    */
-  ImageSprite( { ImageElement img, String imgKey:null, num width:null, num height:null } ) : super.empty() {
-    if( imgKey!=null )
-      image = geng.imageMap[imgKey];
-    if( img!=null )
-      image = img;
+  ImageSprite( GImage img ) : super.empty() {
+    
+    image = img;
     
     sprenderer = (c) {
-      c.c.drawImageScaled(image, -offsetx, -offsety, _w, _h);
+      if( _image!=null )
+        c.c.drawImageScaled(_image.image, -offsetx, -offsety, _w, _h);
     };
-    
-    _w = (width!=null) ? width : image.width;
-    _h = (height!=null) ? height : image.height;
-    offsetx = _w / 2;
-    offsety = _h / 2;
   }
-  
 }
 
 /**
@@ -55,9 +75,9 @@ class Sprite {
   
   SpriteRender  sprenderer;
   
-  factory Sprite.withImage( String imgKey , { num width:null, num height:null } ) {
-    return new ImageSprite( imgKey:imgKey, width:width, height:height );
-  }
+//  factory Sprite.withImage( String imgKey , { num width:null, num height:null } ) {
+//    return new ImageSprite( imgKey:imgKey, width:width, height:height );
+//  }
   
   Sprite.withRender( SpriteRender render, { num width:10, num height:10 } ) {
     sprenderer = render;
@@ -155,16 +175,17 @@ class Sprite {
   }
 }
 
-
 class AnimationRender {
   
+  ImageSprite dstSp;
+  
   /** ここに登録してあるスプライトを順番に表示する:nullだと表示しない */
-  List<Sprite>  spriteList;
+  List<GImage>  spriteList;
   int count = 0;
   int milliseconds = 0;
   var animeEndCallback;
   
-  var _timer;
+  Timer _timer;
   
   /** 有限ループのアニメ。アニメ終了時にcallbackできる */
   AnimationRender.loop( int times, var callback ) {
@@ -175,40 +196,61 @@ class AnimationRender {
         callback();
       } else {
         count=0;
+        fetch();
       }
     };
   }
   /** 無限ループアニメ */
   AnimationRender.mugen() {
-    animeEndCallback = () => count=0;
+    animeEndCallback = () {
+      count=0;
+      fetch();
+    };
   }
   /** 1ショットだけのアニメ */
-  AnimationRender.oneShot() {
-    animeEndCallback = () => stop();
+  AnimationRender.oneShot( var callback ) {
+    animeEndCallback = () {
+      stop();
+      callback();
+    };
   }
   
-  /** レンダリング */
-  void render( GCanvas2D canvas ) {
-    var s = spriteList[count];
-    if( s!=null )
-      s.render(canvas);
-  }
+  GImage get current => spriteList[count];
   
   void start() {
+    if( _timer!=null ) {
+      _timer.cancel();
+      _timer = null;
+    }
+    
+    fetch();
+    
     _timer = new Timer.periodic( new Duration(milliseconds:milliseconds), (t) {
       count++;
-      geng.repaint();
+      
+      if( count < spriteList.length ) {
+        fetch();
+      }
+      
       if( count >= spriteList.length )
         animeEndCallback();
     });
   }
   
+  void fetch() {
+    dstSp.image = current;
+    geng.repaint();
+  }
+  
   void stop() {
-    _timer.cancel();
+    if( _timer!=null ) {
+      _timer.cancel();
+      _timer = null;
+    }
   }
   
   /** スプライトリストにスプライトを追加 */
-  void add( Sprite sp ) {
+  void add( GImage sp ) {
     if( spriteList==null )
       spriteList = new List();
     spriteList.add( sp );
