@@ -10,6 +10,10 @@ import 'vector.dart';
 part 'mamedata.dart';
 part 'manseimame2.dart';
 
+// 1面クリア
+var url01 = "http://www.niku-mansei.com/contents/05club/coupon_coin.html";
+// 2面クリア
+var url02 = "http://www.niku-mansei.com/contents/05club/coupon_lunch.html";
 
 void main() {
   
@@ -25,8 +29,9 @@ void main() {
     geng.hiscoreManager.init();
     
     // SoundのOn/Off
-    bool sound = window.localStorage.containsKey("sound") ? window.localStorage["sound"]=="true" : false;
-    geng.soundManager.soundOn = sound;
+//    bool sound = window.localStorage.containsKey("sound") ? window.localStorage["sound"]=="true" : false;
+//    geng.soundManager.soundOn = sound;
+    geng.soundManager.soundOn = true;
     
     // Canvas
     num scale = isMobileDevice() ? 0.5 : 1;
@@ -401,7 +406,7 @@ class Oni extends GObj {
   Vector  move = new Vector();
   Vector  dpos = new Vector();
   
-  Sprite  sp;
+  ImageSprite  sp;
   GImage  sp1,sp2,sp3,sp4,sp5;
   Sprite  hitSp;
   var anime;
@@ -422,6 +427,8 @@ class Oni extends GObj {
     sp5 = new GImage("oni_r05", offsetx:132, offsety:159 );
     // 初期の位置
     dpos..x = 140.0 ..y = 156.0;
+    hitSp = new ImageSprite( new GImage("hit",offsetx:13,offsety:10) );
+    sp = new ImageSprite( sp1 );
   }
   
   Oni.blue() {
@@ -432,11 +439,17 @@ class Oni extends GObj {
     sp5 = new GImage("oni_b05",offsetx:126, offsety:149 );
     // 初期の位置
     dpos..x=340.0 ..y = 156.0;
+    hitSp = new ImageSprite( new GImage("hit",offsetx:13,offsety:10) );
+    sp = new ImageSprite( sp1 );
   }
   
   void onInit() {
-    sp = new ImageSprite( sp1 );
-    hitSp = new ImageSprite( new GImage("hit",offsetx:13,offsety:10) );
+    // 画像の初期化
+    sp.image = sp1;
+    // 座標の初期化
+    move..x=0.0..y=0.0;
+    sp.x = x;
+    sp.y = y;
     // ouchフラグのリセット
     isOuch = false;
     isKayui = false;
@@ -472,11 +485,11 @@ class Oni extends GObj {
   int getScoreWithX( num px ) {
     var rd = px - x;
     var d = rd.abs();
-    if( d < 5 ) {
+    if( d < 8 ) {
       return 100;
-    } else if( d < 12 ) {
+    } else if( d < 16 ) {
       return 60;
-    } else if( d < 20 ) {
+    } else if( d < 24 ) {
       return 30;
     } else if( d < 46 ) {
       return 10;

@@ -362,7 +362,7 @@ class GEng {
       if( _screen!=null && _screen.input!=null ) {
         e.preventDefault();
         _screen.input.pressEvent( createPressEvent(e) );
-        print( "e.client.x=${e.client.x} offsetLeft=${geng.canvas.offsetLeft}");
+//        print( "e.client.x=${e.client.x} offsetLeft=${geng.canvas.offsetLeft}");
       }
     });
     canvas.onMouseUp.listen( (MouseEvent e) {

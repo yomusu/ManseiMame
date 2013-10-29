@@ -26,7 +26,7 @@ class MessageScreen extends GScreen {
     //------
     // 結果発表の描画
     onFrontRender = ( GCanvas2D canvas ) {
-      canvas.drawTexts(messageTren, serifData[serifIndex], 30, 260);
+      canvas.drawTexts(messageTren, serifData[serifIndex], 25, 260);
     };
     
     //---------------------
@@ -70,9 +70,9 @@ class MessageScreen2 extends GScreen {
       // ぶーちゃん削除
       boo.dispose();
       // 鬼復活
-      var redOni = geng.objlist.query("redOni");
+      var redOni = geng.objlist.query("redOni") as Oni;
       redOni.fukkatsu();
-      var blueOni = geng.objlist.query("blueOni");
+      var blueOni = geng.objlist.query("blueOni") as Oni;
       blueOni.fukkatsu();
       // 鬼のセリフ
       serifIndex = 3;
@@ -91,7 +91,7 @@ class MessageScreen2 extends GScreen {
     // 結果発表の描画
     onFrontRender = ( GCanvas2D canvas ) {
       if( serifIndex >= 0 )
-        canvas.drawTexts(messageTren, serifData[serifIndex], 30, 260);
+        canvas.drawTexts(messageTren, serifData[serifIndex], 25, 260);
     };
     
     //---------------------
@@ -134,6 +134,7 @@ class MessageScreen3 extends GScreen {
       // ぶーちゃん削除
       boo.dispose();
       // スコア表示画面に戻る
+      gameClearCount = 2;
       geng.screen = new ScoreScreen();
     };
     
@@ -141,7 +142,7 @@ class MessageScreen3 extends GScreen {
     // 結果発表の描画
     onFrontRender = ( GCanvas2D canvas ) {
       if( serifIndex >= 0 )
-        canvas.drawTexts(messageTren, serifData[serifIndex], 30, 260);
+        canvas.drawTexts(messageTren, serifData[serifIndex], 25, 260);
     };
     
     //---------------------
@@ -157,7 +158,19 @@ class ScoreScreen extends GScreen {
     
     //-----
     // マウスハンドラ用透明なボタン→セリフを進める
-    input.onRelease = (e) {   geng.screen = new Title();  };
+    input.onRelease = (e) {
+      // 結果に応じて画面遷移
+      switch(gameClearCount) {
+        case 2:
+          window.location.assign(url02);
+          break;
+        case 1:
+          window.location.assign(url01);
+          break;
+        default:
+          geng.screen = new Title();
+      }
+    };
     
     //---------------------
     // 最背面表示
