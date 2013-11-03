@@ -162,14 +162,14 @@ class ScoreScreen extends GScreen {
       // 結果に応じて画面遷移
       switch(gameClearCount) {
         case 2:
-          window.location.assign(url02);
+          window.open(url02,"cleargame");
           break;
         case 1:
-          window.location.assign(url01);
+          window.open(url01,"cleargame");
           break;
         default:
-          geng.screen = new Title();
       }
+      geng.screen = new Title();
     };
     
     //---------------------

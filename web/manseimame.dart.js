@@ -6230,19 +6230,6 @@ ImageElement_ImageElement: function(height, src, width) {
   return e;
 },
 
-Window__isDartLocation: function(thing) {
-  var t1, t2, exception;
-  try {
-    t1 = thing;
-    t2 = J.getInterceptor(t1);
-    return typeof t1 === "object" && t1 !== null && !!t2.$isLocation;
-  } catch (exception) {
-    H.unwrapException(exception);
-    return false;
-  }
-
-},
-
 _convertNativeToDart_Window: function(win) {
   if (win == null)
     return;
@@ -6401,16 +6388,6 @@ _DOMWindowCrossFrame__createSafe: function(w) {
 
 },
 
-_LocationWrapper: {"": "Object;_ptr",
-  assign$1: function(_, url) {
-    return this._ptr.assign(url);
-  },
-  toString$0: function(_) {
-    return this._ptr.toString();
-  },
-  $isLocation: true
-},
-
 HtmlElement: {"": "Element;"},
 
 AnchorElement: {"": "HtmlElement;",
@@ -6517,16 +6494,6 @@ ImageElement: {"": "HtmlElement;height%,src},width%,y="},
 InputElement: {"": "HtmlElement;height%,src},value=,width%"},
 
 LIElement: {"": "HtmlElement;value="},
-
-Location: {"": "Interceptor;",
-  assign$1: function(receiver, url) {
-    return receiver.assign(url);
-  },
-  toString$0: function(receiver) {
-    return receiver.toString();
-  },
-  $isLocation: true
-},
 
 MediaElement: {"": "HtmlElement;src}"},
 
@@ -6647,13 +6614,11 @@ UIEvent: {"": "Event;"},
 VideoElement: {"": "MediaElement;height%,width%"},
 
 Window: {"": "EventTarget;",
-  get$location: function(receiver) {
-    var result = receiver.location;
-    if (W.Window__isDartLocation(result) === true)
-      return result;
-    if (null == receiver._location_wrapper)
-      receiver._location_wrapper = new W._LocationWrapper(result);
-    return receiver._location_wrapper;
+  open$3: function(receiver, url, $name, options) {
+    return W._DOMWindowCrossFrame__createSafe(receiver.open(url, $name));
+  },
+  open$2: function($receiver, url, name) {
+    return this.open$3($receiver, url, name, null);
   },
   get$parent: function(receiver) {
     return W._convertNativeToDart_Window(receiver.parent);
@@ -8781,15 +8746,15 @@ ScoreScreen_onStart_closure: {"": "Closure;",
     var t1;
     switch ($.gameClearCount) {
       case 2:
-        J.assign$1$x(C.Window_methods.get$location(window), $.url02);
+        C.Window_methods.open$2(window, $.url02, "cleargame");
         break;
       case 1:
-        J.assign$1$x(C.Window_methods.get$location(window), $.url01);
+        C.Window_methods.open$2(window, $.url01, "cleargame");
         break;
       default:
-        t1 = $.get$geng();
-        t1.set$screen(t1, new Y.Title(null, B.RenderList$(), new B.InputHandler(null, null, null, null), null, new B.closure(), null));
     }
+    t1 = $.get$geng();
+    t1.set$screen(t1, new Y.Title(null, B.RenderList$(), new B.InputHandler(null, null, null, null), null, new B.closure(), null));
   }
 },
 
@@ -8833,14 +8798,19 @@ SoundManager: {"": "Object;_audioContext,_gainNode,_sound$_map,soundOn",
     return comp.future;
   },
   play$1: function(_, key) {
-    var source, t1;
-    if (this.soundOn && this._audioContext != null) {
-      source = this._audioContext.createBufferSource();
-      source.connect(this._gainNode, 0, 0);
-      t1 = this._sound$_map;
-      source.buffer = t1.$index(t1, key);
-      J.start$1$x(source, 0);
-    }
+    var source, t1, exception;
+    if (this.soundOn && this._audioContext != null)
+      try {
+        source = this._audioContext.createBufferSource();
+        source.connect(this._gainNode, 0, 0);
+        t1 = this._sound$_map;
+        source.buffer = t1.$index(t1, key);
+        J.start$1$x(source, 0);
+      } catch (exception) {
+        H.unwrapException(exception);
+        this._audioContext = null;
+      }
+
   },
   SoundManager$0: function() {
     var exception;
@@ -9235,9 +9205,6 @@ J.$lt$n = function(receiver, a0) {
 J.abs$0$n = function(receiver) {
   return J.getInterceptor$n(receiver).abs$0(receiver);
 };
-J.assign$1$x = function(receiver, a0) {
-  return J.getInterceptor$x(receiver).assign$1(receiver, a0);
-};
 J.compareTo$1$ns = function(receiver, a0) {
   return J.getInterceptor$ns(receiver).compareTo$1(receiver, a0);
 };
@@ -9489,8 +9456,6 @@ H.defineNativeMethods("HTMLImageElement", W.ImageElement);
 H.defineNativeMethods("HTMLInputElement", W.InputElement);
 
 H.defineNativeMethods("HTMLLIElement", W.LIElement);
-
-H.defineNativeMethods("Location", W.Location);
 
 H.defineNativeMethods("HTMLAudioElement", W.MediaElement);
 
