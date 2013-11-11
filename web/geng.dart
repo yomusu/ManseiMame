@@ -413,14 +413,13 @@ class GEng {
     PressEvent  p = new PressEvent();
     
     if( e is TouchEvent ) {
-      print( (e as TouchEvent).touches.length );
-      var t = (e as TouchEvent).touches[0];
+      print( e.touches.length );
+      var t = e.touches[0];
       p.x = (t.client.x - geng.canvas.offsetLeft) ~/ geng._scale;
       p.y = (t.client.y - geng.canvas.offsetTop) ~/ geng._scale;
     } else if( e is MouseEvent ) {
-      var m = e as MouseEvent;
-      p.x = (m.client.x - geng.canvas.offsetLeft) ~/ geng._scale;
-      p.y = (m.client.y - geng.canvas.offsetTop) ~/ geng._scale;
+      p.x = (e.client.x - geng.canvas.offsetLeft) ~/ geng._scale;
+      p.y = (e.client.y - geng.canvas.offsetTop) ~/ geng._scale;
     }
     return p;
   }
