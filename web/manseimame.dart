@@ -34,10 +34,10 @@ void main() {
     geng.soundManager.soundOn = true;
     
     // Canvas
-    num scale = isMobileDevice() ? 0.5 : 1;
-    geng.initField( width:480, height:480, scale:scale );
+//    num scale = isMobileDevice() ? 0.5 : 1;
+    geng.initField( width:480, height:480, scale:1 );
     
-    query("#place").append( geng.canvas );
+    querySelector("#place").append( geng.canvas );
     
     // 開始
     geng.screen = new Title();
